@@ -29,19 +29,12 @@ class LogReport():
 
         epoch = np.asarray(epoch)
         gen_loss = np.asarray(gen_loss)
-        # dis_loss = np.asarray(dis_loss)
 
         plt.plot(epoch, gen_loss)
         plt.xlabel('epoch')
         plt.ylabel('loss_gen')
         plt.savefig(os.path.join(self.log_dir, 'lossgraph_gen.pdf'))
         plt.close()
-
-        # plt.plot(epoch, dis_loss)
-        # plt.xlabel('epoch')
-        # plt.ylabel('loss_dis')
-        # plt.savefig(os.path.join(self.log_dir, 'lossgraph_dis.pdf'))
-        # plt.close()
 
 
 class TestReport():
