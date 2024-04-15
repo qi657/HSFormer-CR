@@ -1,2 +1,2 @@
-# UAST-CR
+# HSFormer-CR
 All code will be uploaded soon, stay tuned！
