@@ -46,16 +46,9 @@ def checkpoint(config, epoch, gen):  # dis
         os.makedirs(model_dir)
 
     net_gen_model_out_path = os.path.join(model_dir, 'gen_model_epoch_{}.pth'.format(epoch))
-    # net_dis_model_out_path = os.path.join(model_dir, 'dis_model_epoch_{}.pth'.format(epoch))
     torch.save(gen.state_dict(), net_gen_model_out_path)
-    # torch.save(dis.state_dict(), net_dis_model_out_path)
     print("Checkpoint saved to {}".format(model_dir))
 
-
-# def checkpoint(config, epoch, gen):
-#     model_dir = os.path.join(config.out_dir, '../Cloud-removal-model-collection-main/models')
-#     if not os.path.exists(model_dir):
-#         os.makedirs(model_dir)
 
     net_gen_model_out_path = os.path.join(model_dir, 'gen_model_epoch_{}.pth'.format(epoch))
     torch.save(gen.state_dict(), net_gen_model_out_path)
