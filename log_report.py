@@ -29,7 +29,6 @@ class LogReport():
 
         epoch = np.asarray(epoch)
         gen_loss = np.asarray(gen_loss)
-
         plt.plot(epoch, gen_loss)
         plt.xlabel('epoch')
         plt.ylabel('loss_gen')
