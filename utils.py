@@ -2,7 +2,6 @@ import os
 import cv2
 import random
 import numpy as np
-
 import torch
 from torch.backends import cudnn
 
