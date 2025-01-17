@@ -45,14 +45,7 @@ def train(config):
     
     ### MODELS LOAD ###
     print('===> Loading models')
-
-    # gen = Generator(gpu_ids=config.gpu_ids)
-    # gen = DRSformer().cuda()
-    # gen = M3SNet().cuda()
-    # gen = UNet1().cuda()
-    # gen = Uformer().cuda()
     gen = Transformer(img_size=(512,512)).cuda()
-#     gen1 = Transformer(img_size=(512, 512)).cuda()
 #     param = torch.load('/code/SpA-GAN_for_cloud_removal-master/results/000072/models/gen_model_epoch_197.pth')
 #     gen1.load_state_dict(param)
     # print(gen)
@@ -76,7 +69,6 @@ def train(config):
     criterion_psnr = criterion_psnr.cuda()
     criterion_ssim = SSIM(data_range=1, size_average=True, channel=3).cuda()
     loss_fn_vgg = lpips.LPIPS(net='vgg').cuda()
-    fdl_loss = FDL_loss().cuda()
     sobel_loss = sobel_l1loss_range_1()
 
     def ColorLoss(x1, x2):
@@ -87,7 +79,6 @@ def train(config):
     criterionMSE = criterionMSE.cuda()
     real_a = real_a.cuda()
     real_b = real_b.cuda()
-
 
     logreport = LogReport(log_dir=config.out_dir)
     validationreport = TestReport(log_dir=config.out_dir)
@@ -100,17 +91,13 @@ def train(config):
         for iteration, batch in enumerate(training_data_loader, 1):
             opt_gen.zero_grad()
             gen.train()
-#             real_a, real_b, M, nir_a = batch[0].cuda(), batch[1].cuda(), batch[2].cuda(), batch[3].cuda()
             real_a, real_b, M = batch[0].cuda(), batch[1].cuda(), batch[2].cuda()
 
             y1 = nn.functional.interpolate(real_b, scale_factor=0.5, mode='bicubic')
             y2 = nn.functional.interpolate(real_b, scale_factor=0.25, mode='bicubic')
             y3 = nn.functional.interpolate(real_b, scale_factor=0.125, mode='bicubic')
 
-#             fake_b = gen(real_a)
-#             y_list, var_list = gen(real_a, nir_a)
-            y_list, var_list = gen(real_a)
-#             y_list1, var_list1 = gen1(real_a, nir_a)
+            fake_b = gen(real_a)
     
             loss_g_l1 = criterionL1(y_list[0], real_b) * config.lamb
             loss_psnr = criterion_psnr(y_list[1], real_b) + criterion_psnr(y_list[2], y1) + criterion_psnr(y_list[3], y2) + criterion_psnr(y_list[4], y3)
@@ -118,10 +105,9 @@ def train(config):
 
             loss_ssim = 1 - criterion_ssim(y_list[0], real_b)
             loss_lpips = torch.mean(loss_fn_vgg(y_list[0], real_b))
-#             loss_fdl = 0.001 * fdl_loss(y_list[0], real_b)
             
-#             loss_sobel = 0.01* sobel_loss(y_list[1], real_b) + 0.01* sobel_loss(y_list[2], y1) + 0.01* sobel_loss(y_list[3], y2) + 0.01* sobel_loss(y_list[4], y3)
-#             loss_sobel = 0.5 * (loss_sobel/4.0) + 0.01* sobel_loss(y_list[0], real_b)
+            loss_sobel = 0.01* sobel_loss(y_list[1], real_b) + 0.01* sobel_loss(y_list[2], y1) + 0.01* sobel_loss(y_list[3], y2) + 0.01* sobel_loss(y_list[4], y3)
+            loss_sobel = 0.5 * (loss_sobel/4.0) + 0.01* sobel_loss(y_list[0], real_b)
             
 #             loss_color = 0.00001* ColorLoss(y_list[1], real_b) + 0.00001* ColorLoss(y_list[2], y1) + 0.00001* ColorLoss(y_list[3], y2) + 0.00001* ColorLoss(y_list[4], y3)
 #             loss_color = 0.5 * (loss_color/4.0) + 0.00001* ColorLoss(y_list[0], real_b)
@@ -148,17 +134,11 @@ def train(config):
             loss_uncertarinty4 = criterionL1(sr_4, hr_4) + 0.5 * torch.mean(var_list[4])
             loss_uncertarinty = (loss_uncertarinty0 + loss_uncertarinty1 + loss_uncertarinty2 + loss_uncertarinty3 + loss_uncertarinty4) / 5.0
 
-            # loss_g_l1 = criterionL1(fake_b, real_b) * config.lamb
-#             loss_psnr = criterion_psnr(fake_b, real_b)
-#             loss_ssim = 1 - criterion_ssim(fake_b, real_b)
-#             loss_lpips = torch.mean(loss_fn_vgg(y_list[0], real_b))
-            # loss_fdl = 0.001 * fdl_loss(fake_b, real_b)
-#             loss_g = loss_psnr + loss_g_l1 + loss_ssim  + 0.1 * loss_uncertarinty + loss_sobel
-            loss_g = loss_psnr + loss_ssim + loss_lpips + loss_uncertarinty
-
-#             loss_g = loss_psnr + loss_ssim + loss_lpips + loss_fdl + loss_uncertarinty
-#             loss_g = loss_psnr + loss_ssim + loss_lpips + loss_uncertarinty + loss_sobel + loss_color
-#             loss_g = loss_g_l1 + loss_lpips + loss_uncertarinty + loss_sobel + loss_color
+            loss_g_l1 = criterionL1(fake_b, real_b) * config.lamb
+            loss_psnr = criterion_psnr(fake_b, real_b)
+            loss_ssim = 1 - criterion_ssim(fake_b, real_b)
+            loss_lpips = torch.mean(loss_fn_vgg(y_list[0], real_b))
+            loss_g = loss_psnr + loss_g_l1 + loss_ssim  + 0.1 * loss_uncertarinty + loss_sobel
 
             loss_g.backward()
 
@@ -166,14 +146,9 @@ def train(config):
 
             # log
             if iteration % 10 == 0:
-#                 print("===> Epoch[{}]({}/{}): loss_l1: {:.4f} loss_psnr: {:.4f} loss_ssim: {:.4f} loss_sobel: {:.4f} loss_uncertarinty: {:.4f}".format(
-#                 epoch, iteration, len(training_data_loader), loss_g_l1.item(), loss_psnr.item(), loss_ssim.item(), loss_sobel.item(), loss_uncertarinty.item()))
-                print("===> Epoch[{}]({}/{}): loss_psnr: {:.4f} loss_ssim: {:.4f} loss_lpips: {:.4f} loss_uncertarinty: {:.4f} ".format(
-                epoch, iteration, len(training_data_loader), loss_psnr.item(), loss_ssim.item(), loss_lpips.item(), loss_uncertarinty.item()))
-#             if iteration % 10 == 0:
-#                 print("===> Epoch[{}]({}/{}): loss_l1: {:.4f} loss_lpips: {:.4f} loss_uncertarinty: {:.4f} loss_sobel: {:.4f} loss_color: {:.4f}".format(
-#                 epoch, iteration, len(training_data_loader), loss_g_l1.item(), loss_lpips.item(), loss_uncertarinty.item(), loss_sobel.item(), loss_color.item()))
-
+                print("===> Epoch[{}]({}/{}): loss_l1: {:.4f} loss_psnr: {:.4f} loss_ssim: {:.4f} loss_sobel: {:.4f} loss_uncertarinty: {:.4f}".format(
+                epoch, iteration, len(training_data_loader), loss_g_l1.item(), loss_psnr.item(), loss_ssim.item(), loss_sobel.item(), loss_uncertarinty.item()))
+                
                 log = {}
                 log['epoch'] = epoch
                 log['iteration'] = len(training_data_loader) * (epoch-1) + iteration
@@ -205,7 +180,6 @@ if __name__ == '__main__':
     os.makedirs(config.out_dir)
     print('Job number: {:04d}'.format(n_job))
 
-    # 保存本次训练时的配置
     shutil.copyfile('config.yml', os.path.join(config.out_dir, 'config.yml'))
 
     train(config)
