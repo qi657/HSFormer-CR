@@ -26,8 +26,9 @@ from torch.cuda.amp import autocast, GradScaler
 from pytorch_msssim import SSIM
 import random
 import torch.nn.functional as F
+from loss_utils.sobel_loss import *
 import matplotlib
-matplotlib.use('TkAgg')
+# matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 
 class ReplayBuffer:
@@ -89,9 +90,9 @@ def get_image_paths(base_path):
 
 
 # 基础路径
-base_path = "E:/WHUS2-CRv/train"
-base_path_val = "E:/WHUS2-CRv/val"
-base_path_test = "E:/WHUS2-CRv/test"
+base_path = "./data/WHUS2-CRv/train"
+base_path_val = "./data/WHUS2-CRv/val"
+base_path_test = "./data/WHUS2-CRv/test"
 
 # 获取图像路径
 image_paths = get_image_paths(base_path)
@@ -124,21 +125,13 @@ leny = len(y_train_datalists_60m)
 k_list = np.random.randint(low=-3, high=3, size=leny)
 
 
-def tv_loss(input_t):
-    temp1 = torch.cat((input_t[:, :, 1:, :], input_t[:, :, -1, :].unsqueeze(2)), 2)
-    temp2 = torch.cat((input_t[:, :, :, 1:], input_t[:, :, :, -1].unsqueeze(3)), 3)
-    temp = (input_t - temp1) ** 2 + (input_t - temp2) ** 2
-    return temp.sum()
-
-
-
 def visualize_true_color(img):
     img = img.squeeze(0)
     true_color_img = torch.stack([img[2], img[1], img[0]], dim=-1)  # 按 RGB 顺序排列
     true_color_img = true_color_img / true_color_img.max()  # 确保像素值在 0-1 范围内
     gamma = 2.2
     true_color_img = torch.pow(true_color_img, 1 / gamma)
-    true_color_img = true_color_img.cpu().detach().numpy()
+    true_color_img = true_color_img.cpu().numpy()
     plt.figure(figsize=(6, 6))
     plt.imshow(true_color_img)
     plt.title("True Color Composite (Bands 2, 3, 4)")
@@ -183,6 +176,7 @@ def train(config):
     criterion_psnr = nn.MSELoss()
     criterion_psnr = criterion_psnr.cuda()
     criterion_ssim = SSIM(data_range=1, size_average=True, channel=13).cuda()
+    sobel_loss = sobel_l1loss_range_1()
 
     print('===> begin')
     start_time = time.time()
@@ -196,10 +190,10 @@ def train(config):
 
             batch_inputx_img = batch_img[0].permute(0, 3, 1, 2)  # (1, 4, 384, 384)
             batch_inputx_img1 = batch_img[2].permute(0, 3, 1, 2)  # (1, 6, 192, 192)
-            batch_inputx_img2 = batch_img[4].permute(0, 3, 1, 2)  # (1, 3, 64, 64)
+            batch_inputx_img2 = batch_img[4].permute(0, 3, 1, 2)
             batch_inputy_img = batch_img[1].permute(0, 3, 1, 2)  # (1, 4, 384, 384)
             batch_inputy_img1 = batch_img[3].permute(0, 3, 1, 2)  # (1, 6, 192, 192)
-            batch_inputy_img2 = batch_img[5].permute(0, 3, 1, 2)  # (1, 3, 64, 64)
+            batch_inputy_img2 = batch_img[5].permute(0, 3, 1, 2)
 
             batch_inputx_img1_upsampled = F.interpolate(batch_inputx_img1, size=(384, 384), mode='bilinear', align_corners=False)
             batch_inputx_img2_upsampled = F.interpolate(batch_inputx_img2, size=(384, 384), mode='bilinear', align_corners=False)
@@ -221,16 +215,15 @@ def train(config):
             with autocast():
                 y_list, var_list = gen(combined_real_a)
 
-            # visualize_true_color(y_list[0])
-            # visualize_true_color(y_list[1])
-
             loss_psnr = criterion_psnr(y_list[1], combined_real_b) + criterion_psnr(y_list[2], y1) + criterion_psnr(y_list[3],
                                                                                                            y2) + criterion_psnr(
                 y_list[4], y3)
             loss_psnr = 0.5 * (loss_psnr / 4.0) + criterion_psnr(y_list[0], combined_real_b)
-            loss_tv = tv_loss(y_list[1]).cuda() + tv_loss(y_list[0]).cuda()
-            # loss_ssim = 1 - criterion_ssim(y_list[0], combined_real_b)
+            loss_ssim = 1 - criterion_ssim(y_list[0], combined_real_b)
 
+            loss_sobel = 0.01* sobel_loss(y_list[1], combined_real_b) + 0.01* sobel_loss(y_list[2], y1) + 0.01* sobel_loss(y_list[3], y2) + 0.01* sobel_loss(y_list[4], y3)
+            loss_sobel = 0.5 * (loss_sobel/4.0) + 0.01* sobel_loss(y_list[0], combined_real_b)
+            
             s = torch.exp(-var_list[0])
             sr_ = torch.mul(y_list[0], s)
             hr_ = torch.mul(s, combined_real_b)
@@ -254,7 +247,7 @@ def train(config):
             loss_uncertarinty = (loss_uncertarinty0 + loss_uncertarinty1 + loss_uncertarinty2 + loss_uncertarinty3 + loss_uncertarinty4) / 5.0
 
             loss_g_l1 = criterionL1(y_list[0], combined_real_b) * config.lamb
-            loss_g = loss_g_l1 + loss_psnr + loss_uncertarinty + 0.0001 * loss_tv
+            loss_g = loss_g_l1 + loss_psnr + loss_uncertarinty + loss_ssim + loss_sobel
 
             scaler.scale(loss_g).backward()
             scaler.step(opt_gen)
@@ -262,8 +255,8 @@ def train(config):
 
             # log
             if iteration % 500 == 0:
-                print("===> Epoch[{}]({}/{}): loss_L1: {:.4f} loss_psnr: {:.4f} loss_uncertarinty: {:.4f} loss_tv: {:.4f}".format(
-                    epoch, iteration, len(train_dataloader), loss_g_l1.item(), loss_psnr.item(), loss_uncertarinty.item(), loss_tv.item()))
+                print("===> Epoch[{}]({}/{}): loss_L1: {:.4f} loss_psnr: {:.4f} loss_uncertarinty: {:.4f} loss_sobel: {:.4f}".format(
+                    epoch, iteration, len(train_dataloader), loss_g_l1.item(), loss_psnr.item(), loss_uncertarinty.item(), loss_sobel.item()))
 
                 log = {}
                 log['epoch'] = epoch
