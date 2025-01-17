@@ -7,6 +7,9 @@
 datasets_dir: ./data/RICE_DATASET/RICE1/
 train_list: train_list.txt
 test_list: test_list.txt
+# datasets_dir: "./data/WHUS2-CRv/train"
+# train_list: "./data/WHUS2-CRv/val"
+# test_list: "./data/WHUS2-CRv/test"
 
 cuda: True
 gpu_ids: [0, 1]
