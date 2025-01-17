@@ -1,5 +1,4 @@
 # -- coding: utf-8 --
-# @Time : 2024/4/27 14:11
 # @Author : Stephanie
 # @Email : sunc696@gmail.com
 # @File : simulate.py
