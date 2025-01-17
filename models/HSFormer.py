@@ -1,13 +1,3 @@
-# -- coding: utf-8 --
-# @Time : 2024/8/16 11:16
-# @Author : Stephanie
-# @Email : sunc696@gmail.com
-# @File : HSFormer_all.py
-#-- coding: utf-8 --
-#@Time : 2024/4/17 16:25
-#@Author : Stephanie
-#@Email : sunc696@gmail.com
-#@File : UDR_S2Former_3.py
 import torch
 import torch.nn as nn
 import numpy as np
@@ -338,7 +328,7 @@ class SparseSamplingAttention(nn.Module):
 
         self.ranking_constraining = True
         self.ranking_constraining_pixel = True
-        self.topk = int(0.8 * h * w)
+        self.topk = int(0.2 * h * w)
 
     def get_constraint_matrix(self, x, var_3d):
         b, c, h, w = x.shape
@@ -406,48 +396,6 @@ class SparseSamplingAttention(nn.Module):
         out = self.proj_drop(out)
 
         return out
-
-    # def forward(self, x,var):
-    #     # to same cuda
-    #     self.base_coords = self.base_coords.to(x.device)
-    #     self.coords = self.coords.to(x.device)
-    #
-    #     b, c, h, w = x.shape
-    #     x_residual = x
-    #     # padding
-    #     assert h == self.img_size[0]
-    #     assert w == self.img_size[1]
-    #     x = torch.nn.functional.pad(x, (self.shift_size, self.padding_right, self.shift_size, self.padding_bottom))
-    #
-    #     window_num_h, window_num_w = self.base_coords.shape[-4], self.base_coords.shape[-2]
-    #     num_predict_total = b * self.num_heads
-    #     coords = self.base_coords.repeat(b*self.num_heads, 1, 1, 1, 1, 1)
-    #     # get constraint matrix
-    #     if self.ranking_constraining:
-    #          var_3d = var.reshape(b,c,h*w)#.mean(1).unsqueeze(1)
-    #          constraint_matrix = self.get_constraint_matrix(x,var_3d)
-    #
-    #     # aim to regular sampling operator
-    #     x_var = x * constraint_matrix
-    #     # get sampling factors
-    #     sampling_biases = self.get_biases(x_var,num_predict_total,window_num_h,window_num_w)
-    #     sampling_scales = self.get_scales(x_var,num_predict_total,window_num_h,window_num_w)
-    #     # transform coords
-    #     coords = coords + self.transform_coord(sampling_scales[:, :, :, None, :, None], sampling_biases[:, :, :, None, :, None])
-    #     grid_coords = self.get_grid_coords(coords,num_predict_total,window_num_h,window_num_w)#coords.permute(0, 2, 3, 4, 5, 1).reshape(num_predict_total, self.ws*window_num_h, self.ws*window_num_w, 2)
-    #     # get qkv for self-attention
-    #     qkv = self.qkv(x_residual).reshape(b, 3, self.num_heads, self.out_dim // self.num_heads, h, w).transpose(1, 0).reshape(3*b*self.num_heads, self.out_dim // self.num_heads, h, w)
-    #     qkv = torch.nn.functional.pad(qkv, (self.shift_size, self.padding_right, self.shift_size, self.padding_bottom)).reshape(3, b*self.num_heads, self.out_dim // self.num_heads, h+self.shift_size+self.padding_bottom, w+self.shift_size+self.padding_right)
-    #     q, k, v = qkv[0], qkv[1], qkv[2]
-    #     # gridsampling
-    #     k_sampling = self.grid_sample_function(k.reshape(num_predict_total, self.out_dim // self.num_heads, h+self.shift_size+self.padding_bottom, w+self.shift_size+self.padding_right),grid_coords)
-    #     v_sampling = self.grid_sample_function(v.reshape(num_predict_total, self.out_dim // self.num_heads, h+self.shift_size+self.padding_bottom, w+self.shift_size+self.padding_right),grid_coords)
-    #     # sparse sampling self-attention
-    #     out = self.window_self_attention(q,k_sampling,v_sampling,window_num_h,window_num_w,b)
-    #
-    #     out = out[:, :, self.shift_size:h+self.shift_size, self.shift_size:w+self.shift_size]
-    #
-    #     return out
 
     def get_pixel_constraint_matrix(self, x, window_num_h, window_num_w, b, x_residual, h, w):
         # get qkv for self-attention
@@ -525,7 +473,6 @@ class SparseSamplingAttention(nn.Module):
         constraint = x * constraint_matrix_uncertainty
         constraint_matrix = torch.max(constraint_matrix_pixel, constraint)
         x_var = constraint_matrix
-        # x_var = constraint
 
         # aim to regular sampling operator
         # x_var = x * constraint_matrix
@@ -621,14 +568,12 @@ class Local_Reconstruction(nn.Module):
         self.ranking_modulation = True
         self.ranking_pixel = True
 
-        self.topk = int(0.8 * self.window_size[0] * self.window_size[1])
+        self.topk = int(0.2 * self.window_size[0] * self.window_size[1])
 
         self.attn1 = torch.nn.Parameter(torch.tensor([0.2]), requires_grad=True)
         self.attn2 = torch.nn.Parameter(torch.tensor([0.2]), requires_grad=True)
         self.attn3 = torch.nn.Parameter(torch.tensor([0.2]), requires_grad=True)
         self.attn4 = torch.nn.Parameter(torch.tensor([0.2]), requires_grad=True)
-
-        self.alpha = nn.Parameter(torch.tensor(0.1))
 
     def get_var_modulation(self, x, var):
         B_, N, C = x.shape
@@ -641,27 +586,6 @@ class Local_Reconstruction(nn.Module):
         modulation_map = modulation_map.unsqueeze(1)
         return modulation_map
 
-    # def self_attention_modulation(self, x, var_modulation):
-    #     B_, N, C = x.shape
-    #     qkv = self.qkv(x).reshape(B_, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
-    #     q, k, v = qkv[0], qkv[1], qkv[2]
-    #     q = q * self.scale
-    #     q_k_dots_before = (q @ k.transpose(-2, -1))
-    #     q_k_dots = q_k_dots_before * var_modulation
-    #
-    #     if self.relative_pos_embedding:
-    #         relative_position_bias = self.relative_position_bias_table[self.relative_position_index.view(-1)].view(
-    #             self.window_size[0] * self.window_size[1], self.window_size[0] * self.window_size[1], -1)
-    #         relative_position_bias = relative_position_bias.permute(2, 0, 1).contiguous()
-    #         q_k_dots = q_k_dots + relative_position_bias.unsqueeze(0)
-    #
-    #     attn = self.softmax(q_k_dots)
-    #     attn = self.attn_drop(attn)
-    #
-    #     out = (attn @ v).transpose(1, 2).reshape(B_, N, C)
-    #     out = self.proj(out)
-    #     out = self.proj_drop(out)
-    #     return out
 
     def self_attention_modulation(self, x, var_modulation):
         B_, N, C = x.shape
@@ -693,10 +617,9 @@ class Local_Reconstruction(nn.Module):
 
         attn_pixel = attn1 * self.attn1 + attn2 * self.attn2 + attn3 * self.attn3 + attn4 * self.attn4
 
-        # q_k_dots = attn_pixel + q_k_dots_before * 0.5 * var_modulation
-        q_k_dots = torch.max(attn_pixel,q_k_dots_before * var_modulation)
+        # q_k_dots = torch.max(attn_pixel,q_k_dots_before *var_modulation)
         # q_k_dots = q_k_dots_before
-        # q_k_dots =q_k_dots_before * var_modulation
+        q_k_dots = attn_pixel * var_modulation
 
         if self.relative_pos_embedding:
             relative_position_bias = self.relative_position_bias_table[self.relative_position_index.view(-1)].view(
@@ -992,7 +915,7 @@ class Transformer(nn.Module):
                  img_size=(256, 256),
                  in_channels=3,
                  out_cahnnels=3,
-                 transformer_blocks=8,   # 8
+                 transformer_blocks=2,  # 8
                  dim=[16, 32, 64, 128, 256],
                  window_size=[8, 8, 8, 8],
                  patch_size=64,
@@ -1175,3 +1098,35 @@ class Transformer(nn.Module):
         out_final = self.out_final(out_dec_level0_refine) + x
         var = self.var_conv_final(out_dec_level0_refine)
         return [out_final, out0, out1, out2, out3], [var, var0, var1, var2, var3]
+
+
+
+
+from ptflops import get_model_complexity_info
+
+model = Transformer(img_size=(256,256)).cuda()
+H,W=256,256
+flops_t, params_t = get_model_complexity_info(model, (3, H,W), as_strings=True, print_per_layer_stat=True)
+
+print(f"net flops:{flops_t} parameters:{params_t}")
+# model = nn.DataParallel(model)
+x = torch.ones([1,3,H,W]).cuda()
+b = model(x)
+steps=25
+# print(b)
+time_avgs=[]
+memory_avgs=[]
+with torch.no_grad():
+    for step in range(steps):
+
+        torch.cuda.synchronize()
+        start = time.time()
+        result = model(x)
+        torch.cuda.synchronize()
+        time_interval = time.time() - start
+        memory = torch.cuda.max_memory_allocated()
+        if step>5:
+            time_avgs.append(time_interval)
+        #print('run time:',time_interval)
+            memory_avgs.append(memory)
+print('avg time:',np.mean(time_avgs),'fps:',(1/np.mean(time_avgs)),'memory:',(1/np.mean(memory_avgs)),' size:',H,W)
