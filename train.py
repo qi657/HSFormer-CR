@@ -1,4 +1,5 @@
 import os
+import random
 import shutil
 import yaml
 from attrdict import AttrMap
@@ -6,18 +7,24 @@ import time
 
 import torch
 from torch import nn
+from torch.backends import cudnn
 from torch import optim
 from torch.utils.data import DataLoader
+
 from torch.autograd import Variable
+from torch.nn import functional as F
 
 from data_manager import TrainDataset
-from models.gen.SPANet import Generator
-from models.dis.dis import Discriminator
+from models.HSFormer import Transformer
 import utils
-from utils import gpu_manage,  checkpoint
-from eval import test
+from utils import gpu_manage, save_image, checkpoint
+# from eval import test
+from eval_1 import test
 from log_report import LogReport
 from log_report import TestReport
+from pytorch_msssim import SSIM
+import lpips
+from loss_utils.sobel_loss import *
 
 
 def train(config):
@@ -39,44 +46,48 @@ def train(config):
     ### MODELS LOAD ###
     print('===> Loading models')
 
-    gen = Generator(gpu_ids=config.gpu_ids)
+    # gen = Generator(gpu_ids=config.gpu_ids)
+    # gen = DRSformer().cuda()
+    # gen = M3SNet().cuda()
+    # gen = UNet1().cuda()
+    # gen = Uformer().cuda()
+    gen = Transformer(img_size=(512,512)).cuda()
+#     gen1 = Transformer(img_size=(512, 512)).cuda()
+#     param = torch.load('/code/SpA-GAN_for_cloud_removal-master/results/000072/models/gen_model_epoch_197.pth')
+#     gen1.load_state_dict(param)
+    # print(gen)
+    # exit(0)
 
     if config.gen_init is not None:
         param = torch.load(config.gen_init)
         gen.load_state_dict(param)
         print('load {} as pretrained model'.format(config.gen_init))
 
-    dis = Discriminator(in_ch=config.in_ch, out_ch=config.out_ch, gpu_ids=config.gpu_ids)
-
-    if config.dis_init is not None:
-        param = torch.load(config.dis_init)
-        dis.load_state_dict(param)
-        print('load {} as pretrained model'.format(config.dis_init))
 
     # setup optimizer
     opt_gen = optim.Adam(gen.parameters(), lr=config.lr, betas=(config.beta1, 0.999), weight_decay=0.00001)
-    opt_dis = optim.Adam(dis.parameters(), lr=config.lr, betas=(config.beta1, 0.999), weight_decay=0.00001)
 
     real_a = torch.FloatTensor(config.batchsize, config.in_ch, config.width, config.height)
     real_b = torch.FloatTensor(config.batchsize, config.out_ch, config.width, config.height)
-    M = torch.FloatTensor(config.batchsize, config.width, config.height)
 
     criterionL1 = nn.L1Loss()
     criterionMSE = nn.MSELoss()
-    criterionSoftplus = nn.Softplus()
+    criterion_psnr = nn.MSELoss()
+    criterion_psnr = criterion_psnr.cuda()
+    criterion_ssim = SSIM(data_range=1, size_average=True, channel=3).cuda()
+    loss_fn_vgg = lpips.LPIPS(net='vgg').cuda()
+    fdl_loss = FDL_loss().cuda()
+    sobel_loss = sobel_l1loss_range_1()
 
-    if config.cuda:
-        gen = gen.cuda()
-        dis = dis.cuda()
-        criterionL1 = criterionL1.cuda()
-        criterionMSE = criterionMSE.cuda()
-        criterionSoftplus = criterionSoftplus.cuda()
-        real_a = real_a.cuda()
-        real_b = real_b.cuda()
-        M = M.cuda()
+    def ColorLoss(x1, x2):
+        return torch.sum(torch.pow((x1 - x2), 2)).div(2 * x1.size()[0])
+    
 
-    real_a = Variable(real_a)
-    real_b = Variable(real_b)
+    criterionL1 = criterionL1.cuda()
+    criterionMSE = criterionMSE.cuda()
+    real_a = real_a.cuda()
+    real_b = real_b.cuda()
+
 
     logreport = LogReport(log_dir=config.out_dir)
     validationreport = TestReport(log_dir=config.out_dir)
@@ -87,53 +98,67 @@ def train(config):
     for epoch in range(1, config.epoch + 1):
         epoch_start_time = time.time()
         for iteration, batch in enumerate(training_data_loader, 1):
-            real_a_cpu, real_b_cpu, M_cpu = batch[0], batch[1], batch[2]
-            real_a.data.resize_(real_a_cpu.size()).copy_(real_a_cpu)
-            real_b.data.resize_(real_b_cpu.size()).copy_(real_b_cpu)
-            M.data.resize_(M_cpu.size()).copy_(M_cpu)
-            att, fake_b = gen.forward(real_a)
-
-            ################
-            ### Update D ###
-            ################
-            
-            opt_dis.zero_grad()
-
-            # train with fake
-            fake_ab = torch.cat((real_a, fake_b), 1)
-            pred_fake = dis.forward(fake_ab.detach())
-            batchsize, _, w, h = pred_fake.size()
-
-            loss_d_fake = torch.sum(criterionSoftplus(pred_fake)) / batchsize / w / h
-
-            # train with real
-            real_ab = torch.cat((real_a, real_b), 1)
-            pred_real = dis.forward(real_ab)
-            loss_d_real = torch.sum(criterionSoftplus(-pred_real)) / batchsize / w / h
-
-            # Combined loss
-            loss_d = loss_d_fake + loss_d_real
-
-            loss_d.backward()
-
-            if epoch % config.minimax == 0:
-                opt_dis.step()
-
-            ################
-            ### Update G ###
-            ################
-            
             opt_gen.zero_grad()
+            gen.train()
+#             real_a, real_b, M, nir_a = batch[0].cuda(), batch[1].cuda(), batch[2].cuda(), batch[3].cuda()
+            real_a, real_b, M = batch[0].cuda(), batch[1].cuda(), batch[2].cuda()
 
-            # First, G(A) should fake the discriminator
-            fake_ab = torch.cat((real_a, fake_b), 1)
-            pred_fake = dis.forward(fake_ab)
-            loss_g_gan = torch.sum(criterionSoftplus(-pred_fake)) / batchsize / w / h
+            y1 = nn.functional.interpolate(real_b, scale_factor=0.5, mode='bicubic')
+            y2 = nn.functional.interpolate(real_b, scale_factor=0.25, mode='bicubic')
+            y3 = nn.functional.interpolate(real_b, scale_factor=0.125, mode='bicubic')
 
-            # Second, G(A) = B
-            loss_g_l1 = criterionL1(fake_b, real_b) * config.lamb
-            loss_g_att = criterionMSE(att[:,0,:,:], M)
-            loss_g = loss_g_gan + loss_g_l1 + loss_g_att
+#             fake_b = gen(real_a)
+#             y_list, var_list = gen(real_a, nir_a)
+            y_list, var_list = gen(real_a)
+#             y_list1, var_list1 = gen1(real_a, nir_a)
+    
+            loss_g_l1 = criterionL1(y_list[0], real_b) * config.lamb
+            loss_psnr = criterion_psnr(y_list[1], real_b) + criterion_psnr(y_list[2], y1) + criterion_psnr(y_list[3], y2) + criterion_psnr(y_list[4], y3)
+            loss_psnr = 0.5*(loss_psnr/4.0) + criterion_psnr(y_list[0],real_b)
+
+            loss_ssim = 1 - criterion_ssim(y_list[0], real_b)
+            loss_lpips = torch.mean(loss_fn_vgg(y_list[0], real_b))
+#             loss_fdl = 0.001 * fdl_loss(y_list[0], real_b)
+            
+#             loss_sobel = 0.01* sobel_loss(y_list[1], real_b) + 0.01* sobel_loss(y_list[2], y1) + 0.01* sobel_loss(y_list[3], y2) + 0.01* sobel_loss(y_list[4], y3)
+#             loss_sobel = 0.5 * (loss_sobel/4.0) + 0.01* sobel_loss(y_list[0], real_b)
+            
+#             loss_color = 0.00001* ColorLoss(y_list[1], real_b) + 0.00001* ColorLoss(y_list[2], y1) + 0.00001* ColorLoss(y_list[3], y2) + 0.00001* ColorLoss(y_list[4], y3)
+#             loss_color = 0.5 * (loss_color/4.0) + 0.00001* ColorLoss(y_list[0], real_b)
+
+            s = torch.exp(-var_list[0])
+            sr_ = torch.mul(y_list[0], s)
+            hr_ = torch.mul(s, real_b)
+            loss_uncertarinty0 = criterionL1(sr_, hr_) + 0.5 * torch.mean(var_list[0])
+            s1 = torch.exp(-var_list[1])
+            sr_1 = torch.mul(y_list[1], s1)
+            hr_1 = torch.mul(s1, real_b)
+            loss_uncertarinty1 = criterionL1(sr_1, hr_1) + 0.5 * torch.mean(var_list[1])
+            s2 = torch.exp(-var_list[2])
+            sr_2 = torch.mul(y_list[2], s2)
+            hr_2 = torch.mul(s2, y1)
+            loss_uncertarinty2 = criterionL1(sr_2, hr_2) + 0.5 * torch.mean(var_list[2])
+            s3 = torch.exp(-var_list[3])
+            sr_3 = torch.mul(y_list[3], s3)
+            hr_3 = torch.mul(s3, y2)
+            loss_uncertarinty3 = criterionL1(sr_3, hr_3) + 0.5 * torch.mean(var_list[3])
+            s4 = torch.exp(-var_list[4])
+            sr_4 = torch.mul(y_list[4], s4)
+            hr_4 = torch.mul(s4, y3)
+            loss_uncertarinty4 = criterionL1(sr_4, hr_4) + 0.5 * torch.mean(var_list[4])
+            loss_uncertarinty = (loss_uncertarinty0 + loss_uncertarinty1 + loss_uncertarinty2 + loss_uncertarinty3 + loss_uncertarinty4) / 5.0
+
+            # loss_g_l1 = criterionL1(fake_b, real_b) * config.lamb
+#             loss_psnr = criterion_psnr(fake_b, real_b)
+#             loss_ssim = 1 - criterion_ssim(fake_b, real_b)
+#             loss_lpips = torch.mean(loss_fn_vgg(y_list[0], real_b))
+            # loss_fdl = 0.001 * fdl_loss(fake_b, real_b)
+#             loss_g = loss_psnr + loss_g_l1 + loss_ssim  + 0.1 * loss_uncertarinty + loss_sobel
+            loss_g = loss_psnr + loss_ssim + loss_lpips + loss_uncertarinty
+
+#             loss_g = loss_psnr + loss_ssim + loss_lpips + loss_fdl + loss_uncertarinty
+#             loss_g = loss_psnr + loss_ssim + loss_lpips + loss_uncertarinty + loss_sobel + loss_color
+#             loss_g = loss_g_l1 + loss_lpips + loss_uncertarinty + loss_sobel + loss_color
 
             loss_g.backward()
 
@@ -141,14 +166,18 @@ def train(config):
 
             # log
             if iteration % 10 == 0:
-                print("===> Epoch[{}]({}/{}): loss_d_fake: {:.4f} loss_d_real: {:.4f} loss_g_gan: {:.4f} loss_g_l1: {:.4f}".format(
-                epoch, iteration, len(training_data_loader), loss_d_fake.item(), loss_d_real.item(), loss_g_gan.item(), loss_g_l1.item()))
-                
+#                 print("===> Epoch[{}]({}/{}): loss_l1: {:.4f} loss_psnr: {:.4f} loss_ssim: {:.4f} loss_sobel: {:.4f} loss_uncertarinty: {:.4f}".format(
+#                 epoch, iteration, len(training_data_loader), loss_g_l1.item(), loss_psnr.item(), loss_ssim.item(), loss_sobel.item(), loss_uncertarinty.item()))
+                print("===> Epoch[{}]({}/{}): loss_psnr: {:.4f} loss_ssim: {:.4f} loss_lpips: {:.4f} loss_uncertarinty: {:.4f} ".format(
+                epoch, iteration, len(training_data_loader), loss_psnr.item(), loss_ssim.item(), loss_lpips.item(), loss_uncertarinty.item()))
+#             if iteration % 10 == 0:
+#                 print("===> Epoch[{}]({}/{}): loss_l1: {:.4f} loss_lpips: {:.4f} loss_uncertarinty: {:.4f} loss_sobel: {:.4f} loss_color: {:.4f}".format(
+#                 epoch, iteration, len(training_data_loader), loss_g_l1.item(), loss_lpips.item(), loss_uncertarinty.item(), loss_sobel.item(), loss_color.item()))
+
                 log = {}
                 log['epoch'] = epoch
                 log['iteration'] = len(training_data_loader) * (epoch-1) + iteration
                 log['gen/loss'] = loss_g.item()
-                log['dis/loss'] = loss_d.item()
 
                 logreport(log)
 
@@ -158,7 +187,7 @@ def train(config):
             validationreport(log_validation)
         print('validation finished')
         if epoch % config.snapshot_interval == 0:
-            checkpoint(config, epoch, gen, dis)
+            checkpoint(config, epoch, gen)
 
         logreport.save_lossgraph()
         validationreport.save_lossgraph()
