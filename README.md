@@ -1,4 +1,5 @@
 # HSFormer
+HSFormer: Multiscale Hybrid Sparse Transformer for Uncertainty-Aware Cloud and Shadow Removal
 
 **datasets**
 
