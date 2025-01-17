@@ -18,8 +18,7 @@ from data_manager import TrainDataset
 from models.HSFormer import Transformer
 import utils
 from utils import gpu_manage, save_image, checkpoint
-# from eval import test
-from eval_1 import test
+from eval import test
 from log_report import LogReport
 from log_report import TestReport
 from pytorch_msssim import SSIM
