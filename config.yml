@@ -1,0 +1,46 @@
+
+# folder path of dataset, which includes 2 subfolders: cloudy_image/ and ground_truth/
+datasets_dir: D:/datasets/RICE_DATASET/RICE2/
+train_list: train_list.txt
+test_list: test_list.txt
+#datasets_dir: D:/datasets/C-CUHK/CUHK-CR1/train
+#train_list: D:/datasets/C-CUHK/CUHK-CR1/train/train.txt
+#test_list: D:/datasets/C-CUHK/CUHK-CR1/test/test.txt
+
+out_dir: results
+
+cuda: True
+gpu_ids: [1]
+
+train_size: 0.8
+validation_size: 0.2 # 验证集大小是占训练集的半分比
+batchsize: 1
+validation_batchsize: 1
+epoch: 200
+n_data: 433
+width: 256
+height: 256
+threads: 0
+
+lr: 0.0004
+beta1: 0.5
+lamb: 1
+minimax: 1
+
+gen_init:
+#D:/SpA-GAN_for_cloud_removal-master/results/000237/models/gen_model_epoch_1.pth
+#D:/SpA-GAN_for_cloud_removal-master/results/000218/models/gen_model_epoch_1.pth
+dis_init: 
+in_ch: 3
+out_ch: 3
+
+manualSeed: 0
+snapshot_interval: 1
+
+nChannel: 3
+nDenselayer: 10
+nFeat: 64
+growthRate: 32
+
+crop_size: 128
+
