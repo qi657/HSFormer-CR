@@ -7,7 +7,7 @@
 * WHUS2-CRv [paper](https://ieeexplore.ieee.org/document/9910392)   [download link](https://doi.org/10.5281/zenodo.8035347)
 
 **models**
-
+* MPRNet : [Semi-supervised thin cloud removal with mutually beneficial guides](https://www.sciencedirect.com/science/article/pii/S0924271622002350)
 * cvae : [Uncertainty-Based Thin Cloud Removal Network via Conditional Variational Autoencoders](https://openaccess.thecvf.com/content/ACCV2022/papers/Ding_Uncertainty-Based_Thin_Cloud_Removal_Network_via_Conditional_Variational_Autoencoders_ACCV_2022_paper.pdf)
 
 * mdsa : [Cloud Removal in Optical Remote Sensing Imagery Using Multiscale Distortion-Aware Networks](https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=9686746)
@@ -17,6 +17,16 @@
 * spagan : [Cloud Removal for Remote Sensing Imagery vai Spatial Attention Generative Adversarial Network](https://arxiv.org/ftp/arxiv/papers/2009/2009.13015.pdf)
 
 * memorynet : [Memory augment is All You Need for image restoration](https://arxiv.org/abs/2309.01377)
+
+* STGAN : [Thin cloud removal for remote sensing images using a physical-model-based CycleGAN with unpaired data](https://ieeexplore.ieee.org/document/9667372/)
+  
+* Restormer : [Restormer: Efficient transformer for high-resolution image restoration](https://openaccess.thecvf.com/content/CVPR2022/papers/Zamir_Restormer_Efficient_Transformer_for_High-Resolution_Image_Restoration_CVPR_2022_paper.pdf)
+
+* M3SNet : [A novel single-stage network for accurate image restoration](https://link.springer.com/article/10.1007/s00371-024-03599-6)
+  
+* UNet : [U-net: Convolutional networks for biomedical image segmentation](https://arxiv.org/abs/1505.04597)
+  
+* TCME : [TCME: Thin Cloud removal network for optical remote sensing images based on Multi-dimensional features Enhancement](https://ieeexplore.ieee.org/document/10684770/)
 
  # Usage
 
