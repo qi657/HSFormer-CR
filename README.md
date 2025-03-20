@@ -45,7 +45,6 @@ HSFormer: Multiscale Hybrid Sparse Transformer for Uncertainty-Aware Cloud and S
 Please do not hesitate to file an issue or contact me at `sunc696@gmail.com` if you find errors or bugs or if you need further clarification. 
 
 # Cite
-
-If this project is useful to you, please cite this paper :)
+TODO
 
 If you have any questions, be free to contact me!
