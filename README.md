@@ -1,5 +1,10 @@
 # HSFormer
-HSFormer: Multiscale Hybrid Sparse Transformer for Uncertainty-Aware Cloud and Shadow Removal
+<h1 align="center">
+HSFormer: Multiscale Hybrid Sparse Transformer for Uncertainty-Aware Cloud and Shadow Removal</br>(Under review)
+</h1>
+
+> **Abstract.** 
+*Clouds and their shadows hinder accurate analysis of optical remote sensing imagery, making cloud removal an indispensable preprocessing step in remote sensing. However, existing methods lack efficient long-range modeling capabilities and overlook the impact of cloud irregularities and uncertainties on cloud removal. Additionally, resolving spectral confusion between cloud shadows and surface information remains a significant challenge. To tackle this issue, this study introduces an innovative cloud removal algorithm termed the multiscale hybrid sparse transformer (HSFormer), which adaptively removes clouds and shadows while reconstructing land surface semantics. HSFormer leverages pixel correlation explicit sparsity and uncertainty-driven implicit sparsity to maximize attention gains, enabling efficient cloud recognition and removal. The global pixel correlation based on attention relations enhances the semantic integrity of reconstructed images and avoids information loss across frequency domains. Furthermore, the uncertainty-guided adaptive receptive field enhances the model’s ability to resolve complex cloud-covered spatial relationships and reduces the spatial uncertainty of the reconstructed image. Experiments on simulated cloud shadow, real RICE, and full-band WHUS2-CRv datasets demonstrate HSFormer’s superiority over existing methods, improving PSNR and SSIM by 0.49\% and 0.62\%, respectively, in average evaluations across all bands of the WHUS2-CRv dataset and effectively addresses spectral aliasing between cloud shadows and dark surfaces.*
 
 **datasets**
 
@@ -36,6 +41,9 @@ HSFormer: Multiscale Hybrid Sparse Transformer for Uncertainty-Aware Cloud and S
 1. Add your output dir path in the config and choose the model you need
 2. Change the dataset path in the dataload/xx.py
 3. python train.py (for RICE dataset) or train_whus2crv.py (for WHUS2-CRv dataset)
+
+## Contacts
+Please do not hesitate to file an issue or contact me at `sunc696@gmail.com` if you find errors or bugs or if you need further clarification. 
 
 # Cite
 
