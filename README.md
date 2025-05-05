@@ -1,5 +1,5 @@
 <h1 align="center">
-HSFormer: Multiscale Hybrid Sparse Transformer for Uncertainty-Aware Cloud and Shadow Removal</br> [paper](https://doi.org/10.1109/TGRS.2025.3564855)
+HSFormer: Multiscale Hybrid Sparse Transformer for Uncertainty-Aware Cloud and Shadow Removal [paper](https://doi.org/10.1109/TGRS.2025.3564855)</br> 
 </h1>
 
 > **Abstract.** 
