@@ -1,5 +1,5 @@
 <h1 align="center">
-HSFormer: Multiscale Hybrid Sparse Transformer for Uncertainty-Aware Cloud and Shadow Removal</br>(Under review)
+HSFormer: Multiscale Hybrid Sparse Transformer for Uncertainty-Aware Cloud and Shadow Removal</br>
 </h1>
 
 > **Abstract.** 
@@ -45,6 +45,13 @@ HSFormer: Multiscale Hybrid Sparse Transformer for Uncertainty-Aware Cloud and S
 Please do not hesitate to file an issue or contact me at `sunc696@gmail.com` if you find errors or bugs or if you need further clarification. 
 
 # Cite
-TODO
+
+@article{sun2025hsformer,
+  title={HSFormer: Multiscale Hybrid Sparse Transformer for Uncertainty-Aware Cloud and Shadow Removal},
+  author={Sun, Changqi and Chen, Yuntian and Cao, Qinglong and Nie, Longfeng and Zeng, Zhenzhong and Zhang, Dongxiao},
+  journal={IEEE Transactions on Geoscience and Remote Sensing},
+  year={2025},
+  publisher={IEEE}
+}
 
 If you have any questions, be free to contact me!
