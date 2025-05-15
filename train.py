@@ -45,7 +45,7 @@ def train(config):
     ### MODELS LOAD ###
     print('===> Loading models')
     gen = Transformer(img_size=(512,512)).cuda()
-#     param = torch.load('/code/SpA-GAN_for_cloud_removal-master/results/000072/models/gen_model_epoch_197.pth')
+#     param = torch.load('/code/HSFormer_for_cloud_removal-master/results/000072/models/gen_model_epoch_197.pth')
 #     gen1.load_state_dict(param)
     # print(gen)
     # exit(0)
