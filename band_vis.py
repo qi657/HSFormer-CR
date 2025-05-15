@@ -141,19 +141,19 @@ gen = Transformer(img_size=(384,384)).cuda()
 # gen = Generator().cuda()  # cloudgan
 # gen = MPRNet(in_c=13, out_c=13).cuda()  # MPRNet
 
-# param = torch.load('D:/SpA-GAN_for_cloud_removal-master/results/000426/models/gen_model_epoch_46.pth')  # cvae
-# param = torch.load('D:/SpA-GAN_for_cloud_removal-master/results/000457/models/gen_model_epoch_1.pth')   # hsformer
-param = torch.load('D:/SpA-GAN_for_cloud_removal-master/results/000458/models/gen_model_epoch_7.pth')   # hsformer_1
-# param = torch.load('D:/SpA-GAN_for_cloud_removal-master/results/000469/models/gen_model_epoch_15.pth')   # UNet
-# param = torch.load('D:/SpA-GAN_for_cloud_removal-master/results/000472/models/gen_model_epoch_20.pth')   # STGAN
-# param = torch.load('D:/SpA-GAN_for_cloud_removal-master/results/pcl_cloud/TCME_whu_410_gen_model_epoch_1.pth')   # TCME
-# param = torch.load('D:/SpA-GAN_for_cloud_removal-master/results/pcl_cloud/TCME_whu_410_gen_model_epoch_3.pth')   # TCME_1
-# param = torch.load('D:/SpA-GAN_for_cloud_removal-master/results/pcl_cloud/restromer_whu_408_gen_model_epoch_8.pth')   # Restormer
-# param = torch.load('D:/SpA-GAN_for_cloud_removal-master/results/pcl_cloud/M3SNet_whu_445_gen_model_epoch_9.pth')   # M3SNet
-# param = torch.load('D:/SpA-GAN_for_cloud_removal-master/results/000480/models/gen_model_epoch_2.pth')   # SPAGAN
-# param = torch.load('D:/SpA-GAN_for_cloud_removal-master/results/pcl_cloud/amgan_456_gen_model_epoch_4.pth')   # AMGAN
-# param = torch.load('D:/SpA-GAN_for_cloud_removal-master/results/pcl_cloud/cloudgan_whus2crv_gen_model_epoch_7.pth')   # cloudgan
-# param = torch.load('D:/SpA-GAN_for_cloud_removal-master/results/000499/models/gen_model_epoch_2.pth')   # MPRNet
+# param = torch.load('D:/HSFormer_for_cloud_removal-master/results/000426/models/gen_model_epoch_46.pth')  # cvae
+# param = torch.load('D:/HSFormer_for_cloud_removal-master/results/000457/models/gen_model_epoch_1.pth')   # hsformer
+param = torch.load('D:/HSFormer_for_cloud_removal-master/results/000458/models/gen_model_epoch_7.pth')   # hsformer_1
+# param = torch.load('D:/HSFormer_for_cloud_removal-master/results/000469/models/gen_model_epoch_15.pth')   # UNet
+# param = torch.load('D:/HSFormer_for_cloud_removal-master/results/000472/models/gen_model_epoch_20.pth')   # STGAN
+# param = torch.load('D:/HSFormer_for_cloud_removal-master/results/pcl_cloud/TCME_whu_410_gen_model_epoch_1.pth')   # TCME
+# param = torch.load('D:/HSFormer_for_cloud_removal-master/results/pcl_cloud/TCME_whu_410_gen_model_epoch_3.pth')   # TCME_1
+# param = torch.load('D:/HSFormer_for_cloud_removal-master/results/pcl_cloud/restromer_whu_408_gen_model_epoch_8.pth')   # Restormer
+# param = torch.load('D:/HSFormer_for_cloud_removal-master/results/pcl_cloud/M3SNet_whu_445_gen_model_epoch_9.pth')   # M3SNet
+# param = torch.load('D:/HSFormer_for_cloud_removal-master/results/000480/models/gen_model_epoch_2.pth')   # SPAGAN
+# param = torch.load('D:/HSFormer_for_cloud_removal-master/results/pcl_cloud/amgan_456_gen_model_epoch_4.pth')   # AMGAN
+# param = torch.load('D:/HSFormer_for_cloud_removal-master/results/pcl_cloud/cloudgan_whus2crv_gen_model_epoch_7.pth')   # cloudgan
+# param = torch.load('D:/HSFormer_for_cloud_removal-master/results/000499/models/gen_model_epoch_2.pth')   # MPRNet
 gen.load_state_dict(param)
 gen = gen.cuda(0)
 
