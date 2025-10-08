@@ -96,7 +96,7 @@ def train(config):
             y2 = nn.functional.interpolate(real_b, scale_factor=0.25, mode='bicubic')
             y3 = nn.functional.interpolate(real_b, scale_factor=0.125, mode='bicubic')
 
-            fake_b = gen(real_a)
+            y_list, var_list = gen(real_a)
     
             loss_g_l1 = criterionL1(y_list[0], real_b) * config.lamb
             loss_psnr = criterion_psnr(y_list[1], real_b) + criterion_psnr(y_list[2], y1) + criterion_psnr(y_list[3], y2) + criterion_psnr(y_list[4], y3)
@@ -133,10 +133,6 @@ def train(config):
             loss_uncertarinty4 = criterionL1(sr_4, hr_4) + 0.5 * torch.mean(var_list[4])
             loss_uncertarinty = (loss_uncertarinty0 + loss_uncertarinty1 + loss_uncertarinty2 + loss_uncertarinty3 + loss_uncertarinty4) / 5.0
 
-            loss_g_l1 = criterionL1(fake_b, real_b) * config.lamb
-            loss_psnr = criterion_psnr(fake_b, real_b)
-            loss_ssim = 1 - criterion_ssim(fake_b, real_b)
-            loss_lpips = torch.mean(loss_fn_vgg(y_list[0], real_b))
             loss_g = loss_psnr + loss_g_l1 + loss_ssim  + 0.1 * loss_uncertarinty + loss_sobel
 
             loss_g.backward()
